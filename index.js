@@ -8,6 +8,7 @@ const pageMod = require('sdk/page-mod');
 
 const getYouTubeUrl = require('./lib/get-youtube-url');
 const getVimeoUrl = require('./lib/get-vimeo-url');
+const getTwitchUrl = require('./lib/get-twitch-url');
 const launchVideo = require('./lib/launch-video');
 const sendMetricsData = require('./lib/send-metrics-data');
 const contextMenuHandlers = require('./lib/context-menu-handlers');
@@ -45,6 +46,14 @@ exports.main = function() {
           launchVideo(opts);
         } else if (opts.domain.indexOf('vimeo.com')  > -1) {
           opts.getUrlFn = getVimeoUrl;
+          sendMetricsData({
+            object: 'overlay_icon',
+            method: 'launch',
+            domain: opts.domain
+          });
+          launchVideo(opts);
+        } else if (opts.domain.indexOf('twitch.tv')  > -1) {
+          opts.getUrlFn = getTwitchUrl;
           sendMetricsData({
             object: 'overlay_icon',
             method: 'launch',

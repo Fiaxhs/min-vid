@@ -16,6 +16,7 @@ function removeOverlay(el) {
 function checkForEmbeds() {
   ytEmbedChecks();
   vimeoEmbedChecks();
+  twitchEmbedChecks();
 }
 
 function ytEmbedChecks() {
@@ -163,6 +164,68 @@ function vimeoEmbedChecks() {
     vimeoDetailContainer.appendChild(tmp);
     sendMetric('available');
   }
+}
+
+function twitchEmbedChecks() {
+  if (!(host.indexOf('twitch.tv') > -1)) return;
+
+  // YouTube Home Page
+  const twitchChannelContainers = Array.from(document.querySelectorAll('.player'));
+  if (twitchChannelContainers.length) {
+    sendMetric('available');
+    twitchChannelContainers.forEach(twitchChannelPageHandler);
+  }
+
+  // const ytSearchContainers = Array.from(document.querySelectorAll('#results .yt-lockup-thumbnail'));
+  // if (ytSearchContainers.length) {
+  //   sendMetric('available');
+  //   ytSearchContainers.forEach(ytHomePageHandler);
+  // }
+
+  // // YouTube Watch Page
+  // const ytWatchContainer = document.querySelector('.html5-video-player');
+  // if (ytWatchContainer) {
+  //   sendMetric('available');
+  //   ytWatchElementHandler(ytWatchContainer);
+  // }
+
+  // // YouTube Watch Page related videos
+  // const ytRelatedContainers = Array.from(document.querySelectorAll('.watch-sidebar-section .thumb-wrapper'));
+  // if (ytRelatedContainers.length) {
+  //   sendMetric('available');
+  //   ytRelatedContainers.forEach(ytHomePageHandler);
+  // }
+
+  // // YouTube Channel Page videos featured section
+  // const ytChannelFeaturedContainers = Array.from(document.querySelectorAll('#browse-items-primary .lohp-thumb-wrap'));
+  // if (ytChannelFeaturedContainers.length) {
+  //   sendMetric('available');
+  //   ytChannelFeaturedContainers.forEach(ytHomePageHandler);
+  // }
+
+  // // YouTube Channel Page videos uploads section
+  // const ytChannelUploadsContainers = Array.from(document.querySelectorAll('#browse-items-primary .yt-lockup-thumbnail'));
+  // if (ytChannelUploadsContainers.length) {
+  //   sendMetric('available');
+  //   ytChannelUploadsContainers.forEach(ytHomePageHandler);
+  // }
+}
+
+function twitchChannelPageHandler(el) {
+  if (el.classList.contains('minvid__overlay__wrapper')) return;
+
+  el.classList.add('minvid__overlay__wrapper');
+  const tmp = getTemplate();
+  tmp.addEventListener('click', function(ev) {
+    evNoop(ev);
+    if (el.getAttribute('data-channel')) {
+      self.port.emit('launch', {
+        url: 'https://player.twitch.tv/' + el.getAttribute('data-channel'),
+        domain: 'twitch.tv'
+      });
+    } else console.error('Error parsing url from Twitch channel page', el); // eslint-disable-line no-console
+  });
+  el.appendChild(tmp);
 }
 
 // General Helpers

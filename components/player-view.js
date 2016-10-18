@@ -3,6 +3,7 @@ const ReactTooltip = require('react-tooltip');
 const cn = require('classnames');
 
 const ytCtrl = require('../client-lib/yt-ctrl');
+const twitchCtrl = require('../client-lib/twitch-ctrl');
 const sendMetricsEvent = require('../client-lib/send-metrics-event');
 const sendToAddon = require('../client-lib/send-to-addon');
 const GeneralControls = require('./general-controls');
@@ -23,7 +24,7 @@ module.exports = React.createClass({
     return {showVolume: false, hovered: false};
   },
   step: function() {
-    const currentTime = this.isYt ? ytCtrl.getTime() : this.refs.video.currentTime;
+    const currentTime = this.isYt ? ytCtrl.getTime() : this.isTwitch ? twitchCtrl.getTime() : this.refs.video.currentTime;
 
     window.AppData = Object.assign(window.AppData, {
       currentTime: `${formatTime(currentTime)} / ${formatTime(window.AppData.duration)}`,
@@ -43,7 +44,7 @@ module.exports = React.createClass({
   onLoaded: function() {
     clearTimeout(this.loadingTimeout);
     sendMetricsEvent('player_view', 'video_loaded');
-    const duration = this.isYt ? ytCtrl.getDuration() : this.refs.video.duration;
+    const duration = this.isYt ? ytCtrl.getDuration() : this.isTwitch ? twitchCtrl.getDuration() : this.refs.video.duration;
 
     // for YouTube we need to detect if the duration is 0 to see
     // if there was a problem loading.
@@ -79,6 +80,7 @@ module.exports = React.createClass({
   },
   componentWillUpdate: function() {
     this.isYt = !!~this.props.domain.indexOf('youtube.com');
+    this.isTwitch = !!~this.props.domain.indexOf('twitch.tv');
   },
   componentDidUpdate: function(prevProps, prevState) {
     if (prevProps.src !== this.props.src) {
@@ -108,6 +110,18 @@ module.exports = React.createClass({
           console.error('Error: ytCtrl: ', err); // eslint-disable-line no-console
         }
       });
+    } else if (this.isTwitch) {
+      twitchCtrl.init('video', {
+        onReady: this.onLoaded,
+        onStateChange: (ev) => {
+          this.play();
+        },
+        onError: (err) => {
+          const url = `https://twitch.tv/{this.props.id}`;
+          window.AppData.error = `There was an error loading your video from ${url}`;
+          console.error('Error: twitchCtrl: ', err); // eslint-disable-line no-console
+        }
+      })
     }
     this.refs.video.addEventListener('canplay', this.onLoaded);
     this.refs.video.addEventListener('durationchange', this.onLoaded);
@@ -123,6 +137,8 @@ module.exports = React.createClass({
     sendMetricsEvent('player_view', 'play');
     if (this.isYt) {
       ytCtrl.play();
+    } else if (this.isTwitch) {
+      twitchCtrl.play()
     } else {
       this.refs.video.play();
     }
@@ -133,6 +149,8 @@ module.exports = React.createClass({
     sendMetricsEvent('player_view', 'pause');
     if (this.isYt) {
       ytCtrl.pause();
+    } else if (this.isTwitch) {
+      twitchCtrl.pause();
     } else {
       this.refs.video.pause();
     }
@@ -144,6 +162,8 @@ module.exports = React.createClass({
 
     if (this.isYt) {
       ytCtrl.mute();
+    } else if (this.isTwitch) {
+      twitchCtrl.mute()
     } else {
       this.refs.video.muted = true;
     }
@@ -168,6 +188,8 @@ module.exports = React.createClass({
 
     if (this.isYt) {
       ytCtrl.unmute();
+    } else if (this.isTwitch) {
+      twitchCtrl.unmute()
     } else {
       this.refs.video.muted = false;
     }
@@ -180,6 +202,8 @@ module.exports = React.createClass({
 
     if (this.isYt) {
       ytCtrl.setVolume(value * 100);
+    } else if (this.isTwitch) {
+      twitchCtrl.setVolume(value)
     } else {
       this.refs.video.volume = value;
     }
@@ -256,9 +280,14 @@ module.exports = React.createClass({
   },
   render: function() {
     const noop = () => false;
-    const videoEl = this.isYt ?
-          (<iframe id='video' ref='video' src={this.props.src} onContextMenu={noop} />) :
-          (<video id='video' ref='video' src={this.props.src} autoplay={false} onContextMenu={noop}/>);
+    if (this.isTwitch) {
+      videoEl = (<div id='video' ref='video' onContextMenu={noop} ></div>);
+    } else {
+      videoEl = this.isYt ?
+        (<iframe id='video' ref='video' src={this.props.src} onContextMenu={noop} />) :
+        (<video id='video' ref='video' src={this.props.src} autoplay={false} onContextMenu={noop}/>);
+
+    }
 
     return (
         <div className='video-wrapper' onMouseEnter={this.enterPlayer}
